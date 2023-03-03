@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useState, useRef, Fragment } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Keyboard,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { PURPLE, WHITE, DARK } from "../constants";
 import { getAllMessagesOfChat, messageSend } from "../services";
@@ -21,6 +22,8 @@ const Messages = ({ chatId, connection, userId }) => {
 
   const [messageData, setMessageData] = useState("");
   const [isMessageSent, setIsMessageSent] = useState(false);
+
+  const listRef = useRef(null);
 
   const fetchMessages = async () => {
     setIsMessagesLoad(true);
@@ -61,12 +64,14 @@ const Messages = ({ chatId, connection, userId }) => {
   }, [chatId]);
 
   useEffect(() => {
-    connection.on("message recieved", (newMessageRecieved) => {
-      console.log("MESSAGE RECEIVED");
-      if (selectedChatCompare === newMessageRecieved.chat._id) {
-        setMessages([...messages, newMessageRecieved]);
-      }
-    });
+    connection
+      .off("message recieved")
+      .on("message recieved", (newMessageRecieved) => {
+        console.log("MESSAGE RECEIVED");
+        if (selectedChatCompare === newMessageRecieved.chat._id) {
+          setMessages([...messages, newMessageRecieved]);
+        }
+      });
   });
 
   return (
@@ -101,6 +106,13 @@ const Messages = ({ chatId, connection, userId }) => {
                 </Text>
               </View>
             )}
+            ref={listRef}
+            onLayout={() => listRef?.current.scrollToEnd({ animated: true })}
+            onContentSizeChange={() => {
+              if (messages.length) {
+                listRef?.current?.scrollToEnd({ animated: true });
+              }
+            }}
           />
 
           <View
@@ -131,7 +143,13 @@ const Messages = ({ chatId, connection, userId }) => {
               />
             </View>
             <TouchableOpacity
-              onPress={sendMessage}
+              onPress={() => {
+                if (messageData.length === 0) {
+                  Alert.alert("OOPS!", "Empty message cannot be send");
+                } else {
+                  sendMessage();
+                }
+              }}
               style={{
                 backgroundColor: PURPLE,
                 padding: 10,
